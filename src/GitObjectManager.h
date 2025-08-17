@@ -18,9 +18,6 @@ class GitObjectManager {
 private:
 	struct Private;
 	Private *m;
-	QString subdir_git_objects;
-	QString subdir_git_objects_pack;
-	std::vector<GitPackIdxPtr> git_idx_list;
 
 	static void applyDelta(QByteArray const *base, QByteArray const *delta, QByteArray *out);
 	static bool loadPackedObject(GitPackIdxPtr const &idx, QIODevice *packfile, GitPackIdxItem const *item, GitPack::Object *out);

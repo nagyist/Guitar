@@ -13,6 +13,9 @@
 
 struct GitObjectManager::Private {
 	std::mutex *mutex_ = nullptr;
+	QString subdir_git_objects;
+	QString subdir_git_objects_pack;
+	std::vector<GitPackIdxPtr> git_idx_list;
 };
 
 GitObjectManager::GitObjectManager(std::mutex *mutex)
@@ -25,9 +28,6 @@ GitObjectManager::GitObjectManager(std::mutex *mutex)
 
 GitObjectManager::GitObjectManager(GitObjectManager const &other)
 	: m(new Private(*other.m))
-	, subdir_git_objects(other.subdir_git_objects)
-	, subdir_git_objects_pack(other.subdir_git_objects_pack)
-	, git_idx_list(other.git_idx_list)
 {
 }
 
@@ -47,8 +47,8 @@ GitObjectManager &GitObjectManager::operator =(const GitObjectManager &other)
 
 void GitObjectManager::init()
 {
-	subdir_git_objects = ".git/objects";
-	subdir_git_objects_pack = subdir_git_objects / "pack";
+	m->subdir_git_objects = ".git/objects";
+	m->subdir_git_objects_pack = m->subdir_git_objects / "pack";
 }
 
 void GitObjectManager::setup()
@@ -59,15 +59,15 @@ void GitObjectManager::setup()
 void GitObjectManager::loadIndexes(GitRunner g, std::mutex *mutex)
 {
 	auto Do = [&](){
-		if (git_idx_list.empty()) {
-			QString path = g.workingDir() / subdir_git_objects_pack;
+		if (m->git_idx_list.empty()) {
+			QString path = g.workingDir() / m->subdir_git_objects_pack;
 			QDirIterator it(path, { "pack-*.idx" }, QDir::Files | QDir::Readable);
 			while (it.hasNext()) {
 				it.next();
 				GitPackIdxPtr idx = std::make_shared<GitPackIdxV2>();
 				idx->pack_idx_path = it.filePath();
 				idx->parse(idx->pack_idx_path, true);
-				git_idx_list.push_back(idx);
+				m->git_idx_list.push_back(idx);
 			}
 		}
 	};
@@ -82,7 +82,7 @@ void GitObjectManager::loadIndexes(GitRunner g, std::mutex *mutex)
 
 void GitObjectManager::clearIndexes()
 {
-	git_idx_list.clear();
+	m->git_idx_list.clear();
 }
 
 void GitObjectManager::applyDelta(QByteArray const *base_obj, QByteArray const *delta_obj, QByteArray *out)
@@ -197,7 +197,7 @@ bool GitObjectManager::extractObjectFromPackFile(GitRunner g, GitHash const &id,
 	auto Do = [&](){
 		loadIndexes(g, nullptr);
 
-		for (GitPackIdxPtr const &idx : git_idx_list) {
+		for (GitPackIdxPtr const &idx : m->git_idx_list) {
 			GitPackIdxItem const *item = idx->item(id);
 			if (item) {
 				GitPack::Object obj;
@@ -228,7 +228,7 @@ QString GitObjectManager::findObjectPath(GitRunner g, GitHash const &id)
 		QString name = id.toQString();
 		QString xx = name.mid(0, 2); // leading two xdigits
 		QString name2 = name.mid(2);  // remaining xdigits
-		QString dir = g.workingDir() / subdir_git_objects / xx; // e.g. /home/user/myproject/.git/objects/5a
+		QString dir = g.workingDir() / m->subdir_git_objects / xx; // e.g. /home/user/myproject/.git/objects/5a
 #if 0
 		QDirIterator it(dir, QDir::Files);
 		while (it.hasNext()) {
