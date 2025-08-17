@@ -1,16 +1,16 @@
 #ifndef GITPACK_H
 #define GITPACK_H
 
+#include "GitTypes.h"
 #include <QIODevice>
 #include <cstdint>
-#include "Git.h"
 
 struct GitPackIdxItem;
 
 class GitPack {
 public:
 	struct Info {
-		Git::Object::Type type = Git::Object::Type::UNKNOWN;
+		GitObject::Type type = GitObject::Type::UNKNOWN;
 		size_t expanded_size = 0;
 		uint64_t offset = 0;
 		QString ref_id;
@@ -33,7 +33,7 @@ public:
 	static bool load(QString const &packfile, GitPackIdxItem const *item, Object *out);
 	static bool seekPackedObject(QIODevice *file, GitPackIdxItem const *item, Info *out);
 	static void decodeTree(QByteArray *out);
-	static Git::Object::Type stripHeader(QByteArray *out);
+	static GitObject::Type stripHeader(QByteArray *out);
 };
 
 #endif // GITPACK_H
